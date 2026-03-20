@@ -16,9 +16,12 @@ lz4==4.4.5
 numpy==2.4.3
 packaging==26.0
 pandas==3.0.1
+pmxt==2.21.1
 prompt_toolkit==3.0.52
+pyarrow==23.0.1
 pydantic==2.12.5
 pydantic_core==2.41.5
+PyMySQL==1.1.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 pytz==2026.1.post1

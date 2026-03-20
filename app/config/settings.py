@@ -48,6 +48,13 @@ KAFKA_BOOTSTRAP_SERVERS = _get_env("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 
 KAFKA_TOPIC_MARKETS = _get_env("KAFKA_TOPIC_MARKETS", "polymarket.market_metadata")
 KAFKA_TOPIC_PRICES = _get_env("KAFKA_TOPIC_PRICES", "polymarket.price_snapshot")
+KAFKA_TOPIC_1 = _get_env("KAFKA_TOPIC_1", "polymarket.topic1")
+KAFKA_TOPIC_2 = _get_env("KAFKA_TOPIC_2", "polymarket.topic2")
+KAFKA_TOPIC_3 = _get_env("KAFKA_TOPIC_3", "polymarket.topic3")
+KAFKA_TOPIC_4 = _get_env("KAFKA_TOPIC_4", "polymarket.topic4")
+KAFKA_TOPIC_7 = _get_env("KAFKA_TOPIC_7", "polymarket.topic7")
+KAFKA_TOPIC_8 = _get_env("KAFKA_TOPIC_8", "polymarket.topic8")
+KAFKA_TOPIC_9 = _get_env("KAFKA_TOPIC_9", "polymarket.topic9")
 
 
 # ========================

@@ -42,4 +42,36 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.ingestion_tasks.ingest_test_raw_data",
         "schedule": crontab(minute="*"),
     },
+    "aggregate-hour-data-01-every-hour": {
+        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-hour-data-02-every-hour": {
+        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_02",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-hour-data-03-every-hour": {
+        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_03",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-hour-data-04-every-hour": {
+        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_04",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-day-data-01-every-day": {
+        "task": "app.tasks.aggregation_tasks.aggregate_day_data_01",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-day-data-02-every-day": {
+        "task": "app.tasks.aggregation_tasks.aggregate_day_data_02",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-day-data-03-every-day": {
+        "task": "app.tasks.aggregation_tasks.aggregate_day_data_03",
+        "schedule": crontab(hour="*"),
+    },
+    "aggregate-day-data-04-every-day": {
+        "task": "app.tasks.aggregation_tasks.aggregate_day_data_04",
+        "schedule": crontab(hour="*"),
+    },
 }

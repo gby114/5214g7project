@@ -163,6 +163,3 @@ class ClickHouseClient:
         except Exception as e:
             logger.error("ClickHouse query failed: %s", str(e))
             raise
-
-
-clickhouse_client = ClickHouseClient()

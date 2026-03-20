@@ -40,12 +40,19 @@ class KafkaAdminServiceClient:
         topics: list[dict],
     ) -> None:
         """
-        Create Kafka topics.
+        Create Kafka topics if they do not already exist.
 
         Args:
-            topics: list of topic configs
+            topics: List of topic configs.
+                Example:
+                [
+                    {
+                        "name": "topic_a",
+                        "num_partitions": 4,
+                        "replication_factor": 3,
+                    }
+                ]
         """
-
         logger.info("Creating Kafka topics")
 
         admin_client = KafkaAdminClient(
@@ -53,39 +60,61 @@ class KafkaAdminServiceClient:
             client_id="polymarket_kafka_admin",
         )
 
-        new_topics = [
-            NewTopic(
-                name=topic["name"],
-                num_partitions=topic["num_partitions"],
-                replication_factor=topic["replication_factor"],
-            )
-            for topic in topics
-        ]
-
-        for topic in topics:
-            logger.info(
-                "Preparing topic '%s' (partitions=%s, replication=%s)",
-                topic["name"],
-                topic["num_partitions"],
-                topic["replication_factor"],
-            )
-
         try:
+            existing_topics = set(admin_client.list_topics())
+
+            logger.info(
+                "Existing Kafka topics: %s",
+                sorted(existing_topics),
+            )
+
+            topics_to_create: list[NewTopic] = []
+
+            for topic in topics:
+                logger.info("topic config = %s", topic)
+
+                topic_name = topic["name"]
+                num_partitions = topic["num_partitions"]
+                replication_factor = topic["replication_factor"]
+
+                if topic_name in existing_topics:
+                    logger.info(
+                        "Topic '%s' already exists, skipping",
+                        topic_name,
+                    )
+                    continue
+
+                logger.info(
+                    "Preparing topic '%s' (partitions=%s, replication=%s)",
+                    topic_name,
+                    num_partitions,
+                    replication_factor,
+                )
+
+                topics_to_create.append(
+                    NewTopic(
+                        name=topic_name,
+                        num_partitions=num_partitions,
+                        replication_factor=replication_factor,
+                        topic_configs=topic.get("config", {}),
+                    )
+                )
+
+            if not topics_to_create:
+                logger.info("No new Kafka topics need to be created")
+                return
+
             admin_client.create_topics(
-                new_topics=new_topics,
+                new_topics=topics_to_create,
                 validate_only=False,
             )
 
-            logger.info("Kafka topics created successfully")
-
-        except TopicAlreadyExistsError:
-
-            logger.warning(
-                "Some Kafka topics already exist. Skipping creation."
+            logger.info(
+                "Kafka topics created successfully: %s",
+                [topic.name for topic in topics_to_create],
             )
 
         except Exception as e:
-
             logger.error(
                 "Failed to create Kafka topics: %s",
                 str(e),
@@ -94,5 +123,4 @@ class KafkaAdminServiceClient:
 
         finally:
             admin_client.close()
-
             logger.info("Kafka admin client closed")
