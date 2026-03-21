@@ -3,8 +3,8 @@ Manual pipeline runner for local debug.
 
 It executes all currently defined Celery task "actions" in a local, sequential way:
 - ingestion tasks (test_raw + optional Polymarket markets fetch)
+- consume tasks (optional Kafka raw -> ClickHouse parse/load)
 - aggregation tasks (test_raw aggregation + placeholder aggregation chains)
-- consume tasks: currently empty in this repo snapshot
 
 This script does NOT start Celery. It calls the underlying service logic directly.
 """
@@ -17,6 +17,7 @@ from typing import Callable
 
 from app.clients.clickhouse_client import ClickHouseClient
 from app.services.aggregation_service import aggregation_service
+from app.services.consume_service import consume_service
 from app.services.ingestion_service import ingestion_service
 from app.utils.wrapper_utils import log_task_run
 
@@ -104,6 +105,12 @@ def main() -> None:
         default="",
         help="Optional search_in: title | description | both",
     )
+    parser.add_argument(
+        "--do-polymarket-consume",
+        action="store_true",
+        default=False,
+        help="If enabled, consume raw Kafka messages and insert parsed snapshots into ClickHouse.",
+    )
 
     # Ingestion test_raw generation
     parser.add_argument(
@@ -150,6 +157,15 @@ def main() -> None:
             task_type="ingestion",
             fn=lambda: ingestion_service.publish_polymarket_markets_to_kafka(**mkw),
         )
+        if args.do_polymarket_consume:
+            run(
+                task_name="consume_polymarket_markets_raw_to_clickhouse",
+                task_type="consume",
+                fn=lambda: consume_service.consume_polymarket_markets_raw_to_clickhouse(
+                    max_messages_per_partition=200,
+                    max_workers=3,
+                ),
+            )
     else:
         print("Skip PMXT ingestion (pass --do-polymarket to enable).")
 

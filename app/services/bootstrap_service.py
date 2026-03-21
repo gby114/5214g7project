@@ -13,6 +13,7 @@ from app.clients.kafka_admin_client import KafkaAdminServiceClient
 from app.clients.clickhouse_client import ClickHouseClient
 from app.clients.mysql_client import MySQLClient
 from app.config.settings import (
+    KAFKA_TOPIC_POLYMARKET_MARKETS_RAW,
     KAFKA_TOPIC_MARKETS,
     KAFKA_TOPIC_PRICES,
     KAFKA_TOPIC_1,
@@ -60,6 +61,7 @@ class BootstrapService:
     # ===============================
     def _bootstrap_kafka(self) -> None:
         topics = [
+            {"name": KAFKA_TOPIC_POLYMARKET_MARKETS_RAW, "num_partitions": 3, "replication_factor": 3},
             {"name": KAFKA_TOPIC_MARKETS, "num_partitions": 3, "replication_factor": 3},
             {"name": KAFKA_TOPIC_PRICES, "num_partitions": 3, "replication_factor": 3},
             {"name": KAFKA_TOPIC_1, "num_partitions": 4, "replication_factor": 3, "config": {"retention.ms": "86400000"}},
