@@ -14,12 +14,15 @@ git checkout -b dev_lanyu
 
 docker compose up -d redis zookeeper kafka1 kafka2 kafka3 clickhouse mysql mongodb
 
-docker compose logs -f kafka1 clickhouse
-
 docker compose run --rm init_infra
 
 docker compose up -d app celery_worker celery_beat metabase
 
+##### Logs
+
+docker compose logs -f kafka1 clickhouse
+
+docker compose logs -f celery_beat
 
 ##### Restart
 
