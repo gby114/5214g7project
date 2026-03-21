@@ -46,6 +46,12 @@ POLYMARKET_TIMEOUT_SECONDS = int(_get_env("POLYMARKET_TIMEOUT_SECONDS", "10"))
 
 KAFKA_BOOTSTRAP_SERVERS = _get_env("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 
+# Raw UnifiedMarket JSON, one message per market (producer: Celery fetch_markets)
+KAFKA_TOPIC_POLYMARKET_MARKETS_RAW = _get_env(
+    "KAFKA_TOPIC_POLYMARKET_MARKETS_RAW",
+    "polymarket.markets.raw",
+)
+
 KAFKA_TOPIC_MARKETS = _get_env("KAFKA_TOPIC_MARKETS", "polymarket.market_metadata")
 KAFKA_TOPIC_PRICES = _get_env("KAFKA_TOPIC_PRICES", "polymarket.price_snapshot")
 KAFKA_TOPIC_1 = _get_env("KAFKA_TOPIC_1", "polymarket.topic1")

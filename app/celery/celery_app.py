@@ -16,6 +16,7 @@ from app.config.settings import (
     APP_TIMEZONE,
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND,
+    FETCH_MARKETS_ENABLED,
 )
 
 celery_app = Celery(
@@ -37,41 +38,49 @@ celery_app.conf.update(
     result_serializer="json",
 )
 
-celery_app.conf.beat_schedule = {
+beat_schedule = {
     "ingest-test-raw-data-every-minute": {
         "task": "app.tasks.ingestion_tasks.ingest_test_raw_data",
         "schedule": crontab(minute="*"),
     },
-    "aggregate-hour-data-01-every-hour": {
-        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-hour-data-02-every-hour": {
-        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_02",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-hour-data-03-every-hour": {
-        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_03",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-hour-data-04-every-hour": {
-        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_04",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-day-data-01-every-day": {
-        "task": "app.tasks.aggregation_tasks.aggregate_day_data_01",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-day-data-02-every-day": {
-        "task": "app.tasks.aggregation_tasks.aggregate_day_data_02",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-day-data-03-every-day": {
-        "task": "app.tasks.aggregation_tasks.aggregate_day_data_03",
-        "schedule": crontab(hour="*"),
-    },
-    "aggregate-day-data-04-every-day": {
-        "task": "app.tasks.aggregation_tasks.aggregate_day_data_04",
-        "schedule": crontab(hour="*"),
-    },
+    # "aggregate-hour-data-01-every-hour": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-hour-data-02-every-hour": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_02",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-hour-data-03-every-hour": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_03",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-hour-data-04-every-hour": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_04",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-day-data-01-every-day": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_01",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-day-data-02-every-day": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_02",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-day-data-03-every-day": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_03",
+    #     "schedule": crontab(hour="*"),
+    # },
+    # "aggregate-day-data-04-every-day": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_04",
+    #     "schedule": crontab(hour="*"),
+    # },
 }
+
+if FETCH_MARKETS_ENABLED:
+    beat_schedule["ingest-polymarket-markets-to-kafka"] = {
+        "task": "app.tasks.ingestion_tasks.ingest_polymarket_markets",
+        "schedule": crontab(minute="*/1"),
+    }
+
+celery_app.conf.beat_schedule = beat_schedule

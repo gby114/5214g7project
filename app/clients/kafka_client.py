@@ -66,7 +66,11 @@ class KafkaProducerClient:
 
         self.producer = KafkaProducer(
             bootstrap_servers=self.bootstrap_servers,
-            value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+            value_serializer=lambda value: json.dumps(
+                value,
+                ensure_ascii=False,
+                default=str,
+            ).encode("utf-8"),
             key_serializer=lambda key: key.encode("utf-8") if key else None,
             linger_ms=5,
             batch_size=16384,

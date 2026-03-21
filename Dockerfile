@@ -7,9 +7,16 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    ca-certificates \
     curl \
     netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version \
+    && npm --version \
+    && npm install -g pmxtjs \
+    && rm -rf /root/.npm
 
 COPY requirements.txt /app/requirements.txt
 

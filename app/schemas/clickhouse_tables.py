@@ -96,6 +96,29 @@ ORDER BY (entity_id, day_bucket, ck_insert_time)
 TTL ck_insert_time + INTERVAL 1 DAY DELETE
 """
 
+POLYMARKET_MARKETS_RAW_TABLE_COLS = [
+    "source",
+    "exchange",
+    "market_id",
+    "payload_json",
+    "ck_insert_time",
+]
+
+POLYMARKET_MARKETS_RAW_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_markets_raw
+(
+    source String,
+    exchange String,
+    market_id String,
+    payload_json String,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toDate(ck_insert_time)
+ORDER BY (market_id, ck_insert_time)
+TTL ck_insert_time + INTERVAL 30 DAY DELETE
+"""
+
 TASK_RUN_LOG_TABLE_COLS = [
     "task_name",
     "task_type",
@@ -132,6 +155,7 @@ CLICKHOUSE_TABLE_QUERIES = [
     TEST_RAW_TABLE_SQL,
     TEST_RAW_HOUR_TABLE_SQL,
     TEST_RAW_DAY_TABLE_SQL,
+    POLYMARKET_MARKETS_RAW_TABLE_SQL,
     TASK_RUN_LOG_TABLE_SQL,
 ]
 
@@ -140,4 +164,5 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
     TEST_RAW = TEST_RAW_TABLE_COLS
     TEST_RAW_HOUR = TEST_RAW_HOUR_TABLE_COLS
     TEST_RAW_DAY = TEST_RAW_DAY_TABLE_COLS
+    POLYMARKET_MARKETS_RAW = POLYMARKET_MARKETS_RAW_TABLE_COLS
     TASK_RUN_LOG = TASK_RUN_LOG_TABLE_COLS
