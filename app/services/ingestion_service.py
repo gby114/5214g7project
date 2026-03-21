@@ -126,7 +126,7 @@ class IngestionService:
         slug: str | None = None,
         offset: int | None = None,
         sort: str = "volume",
-        limit: int = 2000,
+        limit: int = 500,
         search_in: str | None = None,
     ) -> dict:
         fetch_kwargs: dict = {"sort": sort, "limit": limit}

@@ -82,5 +82,9 @@ if FETCH_MARKETS_ENABLED:
         "task": "app.tasks.ingestion_tasks.ingest_polymarket_markets",
         "schedule": crontab(minute="*/1"),
     }
+    beat_schedule["consume-polymarket-markets-raw-to-clickhouse"] = {
+        "task": "app.tasks.consume_tasks.consume_polymarket_markets_raw_to_clickhouse",
+        "schedule": crontab(minute="1-59/1"),
+    }
 
 celery_app.conf.beat_schedule = beat_schedule

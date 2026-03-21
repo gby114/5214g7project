@@ -96,27 +96,103 @@ ORDER BY (entity_id, day_bucket, ck_insert_time)
 TTL ck_insert_time + INTERVAL 1 DAY DELETE
 """
 
-POLYMARKET_MARKETS_RAW_TABLE_COLS = [
-    "source",
-    "exchange",
+POLYMARKET_MARKET_DIM_TABLE_COLS = [
     "market_id",
-    "payload_json",
+    "event_id",
+    "title",
+    "description",
+    "url",
+    "image",
+    "category",
+    "tags_json",
+    "updated_at",
     "ck_insert_time",
 ]
 
-POLYMARKET_MARKETS_RAW_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS polymarket_markets_raw
+POLYMARKET_MARKET_DIM_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_market_dim
+(
+    market_id String,
+    event_id String,
+    title String,
+    description String,
+    url String,
+    image String,
+    category String,
+    tags_json String,
+    updated_at DateTime,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(updated_at)
+ORDER BY (market_id)
+"""
+
+POLYMARKET_MARKET_SNAPSHOT_TABLE_COLS = [
+    "source",
+    "exchange",
+    "market_id",
+    "captured_at",
+    "resolution_date",
+    "volume24h",
+    "volume",
+    "liquidity",
+    "open_interest",
+    "fetch_params_json",
+    "ck_insert_time",
+]
+
+POLYMARKET_MARKET_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_market_snapshot
 (
     source String,
     exchange String,
     market_id String,
-    payload_json String,
+    captured_at DateTime,
+    resolution_date String,
+    volume24h Float64,
+    volume Float64,
+    liquidity Float64,
+    open_interest Float64,
+    fetch_params_json String,
     ck_insert_time DateTime DEFAULT now()
 )
 ENGINE = MergeTree
-PARTITION BY toDate(ck_insert_time)
-ORDER BY (market_id, ck_insert_time)
-TTL ck_insert_time + INTERVAL 30 DAY DELETE
+PARTITION BY toDate(captured_at)
+ORDER BY (market_id, captured_at)
+TTL captured_at + INTERVAL 90 DAY DELETE
+"""
+
+POLYMARKET_OUTCOME_SNAPSHOT_TABLE_COLS = [
+    "source",
+    "exchange",
+    "market_id",
+    "outcome_id",
+    "label",
+    "captured_at",
+    "price",
+    "price_change24h",
+    "metadata_json",
+    "ck_insert_time",
+]
+
+POLYMARKET_OUTCOME_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_outcome_snapshot
+(
+    source String,
+    exchange String,
+    market_id String,
+    outcome_id String,
+    label String,
+    captured_at DateTime,
+    price Float64,
+    price_change24h Float64,
+    metadata_json String,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toDate(captured_at)
+ORDER BY (market_id, outcome_id, captured_at)
+TTL captured_at + INTERVAL 90 DAY DELETE
 """
 
 TASK_RUN_LOG_TABLE_COLS = [
@@ -155,7 +231,9 @@ CLICKHOUSE_TABLE_QUERIES = [
     TEST_RAW_TABLE_SQL,
     TEST_RAW_HOUR_TABLE_SQL,
     TEST_RAW_DAY_TABLE_SQL,
-    POLYMARKET_MARKETS_RAW_TABLE_SQL,
+    POLYMARKET_MARKET_DIM_TABLE_SQL,
+    POLYMARKET_MARKET_SNAPSHOT_TABLE_SQL,
+    POLYMARKET_OUTCOME_SNAPSHOT_TABLE_SQL,
     TASK_RUN_LOG_TABLE_SQL,
 ]
 
@@ -164,5 +242,7 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
     TEST_RAW = TEST_RAW_TABLE_COLS
     TEST_RAW_HOUR = TEST_RAW_HOUR_TABLE_COLS
     TEST_RAW_DAY = TEST_RAW_DAY_TABLE_COLS
-    POLYMARKET_MARKETS_RAW = POLYMARKET_MARKETS_RAW_TABLE_COLS
+    POLYMARKET_MARKET_DIM = POLYMARKET_MARKET_DIM_TABLE_COLS
+    POLYMARKET_MARKET_SNAPSHOT = POLYMARKET_MARKET_SNAPSHOT_TABLE_COLS
+    POLYMARKET_OUTCOME_SNAPSHOT = POLYMARKET_OUTCOME_SNAPSHOT_TABLE_COLS
     TASK_RUN_LOG = TASK_RUN_LOG_TABLE_COLS
