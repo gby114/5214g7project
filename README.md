@@ -3,14 +3,14 @@
 ##### Setup
 
 python -m venv .venv
-py -3.12 -m venv .venv  
+# py -3.12 -m venv .venv
 
 source .venv/bin/activate
-.venv\Scripts\Activate.ps1
+# .venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 
-git checkout -b dev_lanyu
+git checkout -b dev_你的名字
 
 docker compose up -d redis zookeeper kafka1 kafka2 kafka3 clickhouse mysql mongodb
 
@@ -86,3 +86,23 @@ SHOW DATABASES;
 USE default;
 
 SHOW TABLES;
+
+
+##### metabase
+docker compose down
+
+docker compose up -d
+
+docker exec -it polymarket_mysql mysql -u root -p
+
+password: password
+
+CREATE DATABASE IF NOT EXISTS metabase;
+
+GRANT ALL PRIVILEGES ON metabase.* TO 'polymarket_user'@'%';
+
+FLUSH PRIVILEGES;
+
+docker compose restart metabase
+
+http://localhost:3000
