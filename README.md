@@ -3,12 +3,14 @@
 ##### Setup
 
 python -m venv .venv
+py -3.12 -m venv .venv  
 
 source .venv/bin/activate
+.venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 
-git checkout -b dev_你的名字
+git checkout -b dev_lanyu
 
 docker compose up -d redis zookeeper kafka1 kafka2 kafka3 clickhouse mysql mongodb
 

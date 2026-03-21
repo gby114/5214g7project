@@ -16,6 +16,7 @@ from app.config.settings import (
     APP_TIMEZONE,
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND,
+    FETCH_MARKETS_ENABLED,
 )
 
 celery_app = Celery(
@@ -37,7 +38,7 @@ celery_app.conf.update(
     result_serializer="json",
 )
 
-celery_app.conf.beat_schedule = {
+beat_schedule = {
     "ingest-test-raw-data-every-minute": {
         "task": "app.tasks.ingestion_tasks.ingest_test_raw_data",
         "schedule": crontab(minute="*"),
@@ -75,3 +76,11 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour="*"),
     },
 }
+
+if FETCH_MARKETS_ENABLED:
+    beat_schedule["ingest-polymarket-markets-to-kafka"] = {
+        "task": "app.tasks.ingestion_tasks.ingest_polymarket_markets",
+        "schedule": crontab(minute="*/5"),
+    }
+
+celery_app.conf.beat_schedule = beat_schedule
