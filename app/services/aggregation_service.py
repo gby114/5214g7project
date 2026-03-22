@@ -1,16 +1,11 @@
 """
 Project: QF5214 Polymarket Data Pipeline
 File: aggregation_service.py
-Author: Xu
-Created: 2026-03-14
-
-Description:
-Aggregation service utilities
+Description: Aggregation service for processing and transforming
+             Polymarket raw data into star schema fact/dim tables.
 """
 
-
 from app.clients.clickhouse_client import ClickHouseClient
-import random
 from datetime import datetime, timedelta
 from app.logging.logger import setup_logger
 from app.schemas.clickhouse_tables import CLICKHOUSE_TABLE_COLS_ENUM
@@ -22,14 +17,18 @@ from app.utils.time_utils import (
     datetime_to_str
 )
 
-
 logger = setup_logger(__name__)
 
 
 class AggregationService:
     """
     Aggregation service for processing and transforming data.
+    Implements star schema with fact and dimension tables.
     """
+
+    # ─────────────────────────────────────────
+    # EXISTING TEST METHOD (keep as is)
+    # ─────────────────────────────────────────
 
     @classmethod
     def aggregate_test_raw_data(cls):
@@ -41,7 +40,6 @@ class AggregationService:
         end_time = get_utc_now()
         start_time = end_time - timedelta(hours=5)
 
-        # ClickHouse SQL
         query = f"""
             SELECT
                 entity_id,
@@ -68,12 +66,10 @@ class AggregationService:
 
         logger.info("Aggregated %s rows", len(rows))
 
-        # Add insert time
         now = get_utc_now()
         for row in rows:
             row["ck_insert_time"] = now
 
-        # Write to hourly table
         ClickHouseClient().insert_rows(
             table="test_raw_hour",
             rows=rows,
@@ -91,37 +87,455 @@ class AggregationService:
 
         logger.info("Aggregating test raw data finished")
 
+    # ─────────────────────────────────────────
+    # DIMENSION TABLE POPULATION
+    # ─────────────────────────────────────────
+
+    @classmethod
+    def populate_dim_market(cls):
+        """
+        Populate dim_market from polymarket_market_dim.
+        Dimension table for star schema — market metadata.
+        """
+        logger.info("Populating dim_market starting")
+
+        query = """
+            SELECT
+                market_id,
+                event_id,
+                title,
+                category,
+                tags_json,
+                updated_at
+            FROM polymarket_market_dim
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No market dim data found")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="dim_market",
+            rows=rows,
+            column_names=[
+                "market_id",
+                "event_id",
+                "title",
+                "category",
+                "tags_json",
+                "updated_at",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Populating dim_market finished: %s rows", len(rows))
+
+    @classmethod
+    def populate_dim_outcome(cls):
+        """
+        Populate dim_outcome from distinct outcomes
+        in polymarket_outcome_snapshot.
+        Dimension table for star schema — outcome metadata.
+        """
+        logger.info("Populating dim_outcome starting")
+
+        query = """
+            SELECT DISTINCT
+                outcome_id,
+                market_id,
+                label
+            FROM polymarket_outcome_snapshot
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No outcome dim data found")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="dim_outcome",
+            rows=rows,
+            column_names=[
+                "outcome_id",
+                "market_id",
+                "label",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Populating dim_outcome finished: %s rows", len(rows))
+
+    @classmethod
+    def populate_dim_source(cls):
+        """
+        Populate dim_source from distinct sources
+        in polymarket_market_snapshot.
+        Dimension table for star schema — source/exchange metadata.
+        """
+        logger.info("Populating dim_source starting")
+
+        query = """
+            SELECT DISTINCT
+                concat(source, '_', exchange) AS source_id,
+                source,
+                exchange
+            FROM polymarket_market_snapshot
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No source dim data found")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="dim_source",
+            rows=rows,
+            column_names=[
+                "source_id",
+                "source",
+                "exchange",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Populating dim_source finished: %s rows", len(rows))
+
+    # ─────────────────────────────────────────
+    # PLACEHOLDER 1 — MARKET HOURLY AGGREGATION
+    # ─────────────────────────────────────────
+
     @classmethod
     def aggregate_placeholder1_data(cls):
         """
-        Aggregate placeholder1 data into hourly ClickHouse table.
+        Aggregate polymarket market snapshots into hourly fact table.
+        FACT TABLE: fact_market_snapshot_hourly
         """
         logger.info("Aggregating placeholder1 data starting")
+
+        end_time   = get_utc_now()
+        start_time = end_time - timedelta(hours=1)
+
+        query = f"""
+            SELECT
+                source,
+                exchange,
+                market_id,
+                toStartOfHour(captured_at)  AS hour_bucket,
+                avg(volume24h)              AS avg_volume24h,
+                max(volume24h)              AS max_volume24h,
+                min(volume24h)              AS min_volume24h,
+                avg(volume)                 AS avg_volume,
+                max(volume)                 AS max_volume,
+                avg(liquidity)              AS avg_liquidity,
+                max(liquidity)              AS max_liquidity,
+                avg(open_interest)          AS avg_open_interest,
+                count()                     AS snapshot_count
+            FROM polymarket_market_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            GROUP BY
+                source, exchange, market_id, hour_bucket
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No market hourly data to aggregate")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="fact_market_snapshot_hourly",
+            rows=rows,
+            column_names=[
+                "source",
+                "exchange",
+                "market_id",
+                "hour_bucket",
+                "avg_volume24h",
+                "max_volume24h",
+                "min_volume24h",
+                "avg_volume",
+                "max_volume",
+                "avg_liquidity",
+                "max_liquidity",
+                "avg_open_interest",
+                "snapshot_count",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Aggregating placeholder1 data finished: %s rows", len(rows))
+
+    # ─────────────────────────────────────────
+    # PLACEHOLDER 2 — OUTCOME HOURLY AGGREGATION
+    # ─────────────────────────────────────────
 
     @classmethod
     def aggregate_placeholder2_data(cls):
         """
-        Aggregate placeholder2 data into hourly ClickHouse table.
+        Aggregate polymarket outcome snapshots into hourly fact table.
+        FACT TABLE: fact_outcome_snapshot_hourly
         """
         logger.info("Aggregating placeholder2 data starting")
+
+        end_time   = get_utc_now()
+        start_time = end_time - timedelta(hours=1)
+
+        query = f"""
+            SELECT
+                source,
+                exchange,
+                market_id,
+                outcome_id,
+                label,
+                toStartOfHour(captured_at)          AS hour_bucket,
+                argMin(price, captured_at)           AS open_price,
+                argMax(price, captured_at)           AS close_price,
+                max(price)                           AS high_price,
+                min(price)                           AS low_price,
+                avg(price)                           AS avg_price,
+                argMax(price, captured_at)
+                    - argMin(price, captured_at)     AS price_change,
+                avg(price_change24h)                 AS avg_price_change24h,
+                count()                              AS snapshot_count
+            FROM polymarket_outcome_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            GROUP BY
+                source, exchange, market_id,
+                outcome_id, label, hour_bucket
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No outcome hourly data to aggregate")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="fact_outcome_snapshot_hourly",
+            rows=rows,
+            column_names=[
+                "source",
+                "exchange",
+                "market_id",
+                "outcome_id",
+                "label",
+                "hour_bucket",
+                "open_price",
+                "close_price",
+                "high_price",
+                "low_price",
+                "price_change",
+                "avg_price",
+                "avg_price_change24h",
+                "snapshot_count",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Aggregating placeholder2 data finished: %s rows", len(rows))
+
+    # ─────────────────────────────────────────
+    # PLACEHOLDER 3 — MARKET DAILY AGGREGATION
+    # ─────────────────────────────────────────
 
     @classmethod
     def aggregate_placeholder3_data(cls):
         """
-        Aggregate placeholder3 data into hourly ClickHouse table.
+        Roll up hourly market fact data into daily fact table.
+        FACT TABLE: fact_market_snapshot_daily
+        Reads from: fact_market_snapshot_hourly
         """
         logger.info("Aggregating placeholder3 data starting")
+
+        now    = get_utc_now()
+        target = (now - timedelta(days=1)).replace(
+                    hour=0, minute=0, second=0, microsecond=0)
+
+        query = f"""
+            SELECT
+                source,
+                exchange,
+                market_id,
+                toDate(hour_bucket)         AS day_bucket,
+                avg(avg_volume24h)          AS avg_volume24h,
+                max(max_volume24h)          AS max_volume24h,
+                min(min_volume24h)          AS min_volume24h,
+                avg(avg_volume)             AS avg_volume,
+                max(max_volume)             AS max_volume,
+                avg(avg_liquidity)          AS avg_liquidity,
+                max(max_liquidity)          AS max_liquidity,
+                avg(avg_open_interest)      AS avg_open_interest,
+                sum(snapshot_count)         AS snapshot_count
+            FROM fact_market_snapshot_hourly
+            WHERE toDate(hour_bucket) = toDate('{target.strftime("%Y-%m-%d")}')
+            GROUP BY
+                source, exchange, market_id, day_bucket
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No market daily data to aggregate")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="fact_market_snapshot_daily",
+            rows=rows,
+            column_names=[
+                "source",
+                "exchange",
+                "market_id",
+                "day_bucket",
+                "avg_volume24h",
+                "max_volume24h",
+                "min_volume24h",
+                "avg_volume",
+                "max_volume",
+                "avg_liquidity",
+                "max_liquidity",
+                "avg_open_interest",
+                "snapshot_count",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Aggregating placeholder3 data finished: %s rows", len(rows))
+
+    # ─────────────────────────────────────────
+    # PLACEHOLDER 4 — OUTCOME DAILY AGGREGATION
+    # ─────────────────────────────────────────
 
     @classmethod
     def aggregate_placeholder4_data(cls):
         """
-        Aggregate placeholder4 data into hourly ClickHouse table.
+        Roll up hourly outcome fact data into daily fact table.
+        FACT TABLE: fact_outcome_snapshot_daily
+        Reads from: fact_outcome_snapshot_hourly
         """
         logger.info("Aggregating placeholder4 data starting")
 
+        now    = get_utc_now()
+        target = (now - timedelta(days=1)).replace(
+                    hour=0, minute=0, second=0, microsecond=0)
+
+        query = f"""
+            SELECT
+                source,
+                exchange,
+                market_id,
+                outcome_id,
+                label,
+                toDate(hour_bucket)         AS day_bucket,
+                min(open_price)             AS open_price,
+                max(close_price)            AS close_price,
+                max(high_price)             AS high_price,
+                min(low_price)              AS low_price,
+                avg(avg_price)              AS avg_price,
+                avg(avg_price_change24h)    AS avg_price_change24h,
+                sum(snapshot_count)         AS snapshot_count
+            FROM fact_outcome_snapshot_hourly
+            WHERE toDate(hour_bucket) = toDate('{target.strftime("%Y-%m-%d")}')
+            GROUP BY
+                source, exchange, market_id,
+                outcome_id, label, day_bucket
+        """
+
+        rows = ClickHouseClient().query_rows(query)
+
+        if not rows:
+            logger.info("No outcome daily data to aggregate")
+            return
+
+        now = get_utc_now()
+        for row in rows:
+            row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="fact_outcome_snapshot_daily",
+            rows=rows,
+            column_names=[
+                "source",
+                "exchange",
+                "market_id",
+                "outcome_id",
+                "label",
+                "day_bucket",
+                "open_price",
+                "close_price",
+                "high_price",
+                "low_price",
+                "avg_price",
+                "avg_price_change24h",
+                "snapshot_count",
+                "ck_insert_time",
+            ],
+        )
+
+        logger.info("Aggregating placeholder4 data finished: %s rows", len(rows))
 
 
-
-
-
+# Single instance to import elsewhere
 aggregation_service = AggregationService()
+
+# ─────────────────────────────────────────
+# TEST — run this file directly to test
+# ─────────────────────────────────────────
+if __name__ == "__main__":
+    
+    print("=" * 40)
+    print("Test 1 — Creating star schema tables...")
+    from app.schemas.star_schema import STAR_SCHEMA_TABLES
+    from app.clients.clickhouse_client import ClickHouseClient
+    client = ClickHouseClient()
+    for sql in STAR_SCHEMA_TABLES:
+        client.command(sql)
+    print("Tables created!")
+
+    print("=" * 40)
+    print("Test 2 — Market hourly aggregation...")
+    AggregationService.aggregate_placeholder1_data()
+
+    print("=" * 40)
+    print("Test 3 — Outcome hourly aggregation...")
+    AggregationService.aggregate_placeholder2_data()
+
+    print("=" * 40)
+    print("Test 4 — Market daily aggregation...")
+    AggregationService.aggregate_placeholder3_data()
+
+    print("=" * 40)
+    print("Test 5 — Outcome daily aggregation...")
+    AggregationService.aggregate_placeholder4_data()
+
+    print("=" * 40)
+    print("All tests done!")
