@@ -87,6 +87,12 @@ USE default;
 
 SHOW TABLES;
 
+TRUNCATE TABLE system.trace_log;
+TRUNCATE TABLE system.metric_log;
+TRUNCATE TABLE system.asynchronous_metric_log;
+TRUNCATE TABLE system.query_log;
+TRUNCATE TABLE system.part_log;
+
 
 ##### metabase
 docker compose down

@@ -21,9 +21,21 @@ from app.config.settings import (
 
 from app.schemas.clickhouse_tables import CLICKHOUSE_TABLE_QUERIES
 from app.logging.logger import setup_logger
+from pathlib import Path
+import json
+from typing import Any
+
+
+try:
+    import zstandard as zstd
+except ImportError:  # pragma: no cover
+    zstd = None
 
 
 logger = setup_logger(__name__)
+
+
+BUSINESS_DATA_DIR = Path("business_data")
 
 
 class ClickHouseClient:
@@ -162,4 +174,197 @@ class ClickHouseClient:
 
         except Exception as e:
             logger.error("ClickHouse query failed: %s", str(e))
+            raise
+
+    def _get_business_data_file_path(self, table: str) -> Path:
+        """
+        Build export/import file path under business_data directory.
+
+        Args:
+            table: ClickHouse table name
+
+        Returns:
+            Path object
+        """
+        BUSINESS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        return BUSINESS_DATA_DIR / f"{table}.native.zst"
+
+    def _get_business_data_meta_file_path(self, table: str) -> Path:
+        """
+        Build metadata file path under business_data directory.
+
+        Args:
+            table: ClickHouse table name
+
+        Returns:
+            Path object
+        """
+        data_file = self._get_business_data_file_path(table)
+        return data_file.with_suffix(data_file.suffix + ".meta.json")
+
+    def export_table_data(
+        self,
+        table: str,
+        database: str | None = None,
+        where_sql: str | None = None,
+        chunk_size: int = 1024 * 1024,
+        overwrite: bool = True,
+    ) -> str:
+        """
+        Export a ClickHouse table to business_data/{table}.native.zst.
+
+        Args:
+            table: Table name.
+            database: Optional database name. Defaults to client database.
+            where_sql: Optional WHERE clause without the "WHERE" keyword.
+            chunk_size: Streaming chunk size in bytes.
+            overwrite: Whether to overwrite existing file.
+
+        Returns:
+            Final output file path.
+        """
+        if zstd is None:
+            raise ImportError(
+                "zstandard is required for export_table_data. "
+                "Install it with: pip install zstandard"
+            )
+
+        db = database or CLICKHOUSE_DATABASE
+        qualified_table = f"{db}.{table}"
+        output_file = self._get_business_data_file_path(table)
+        meta_file = self._get_business_data_meta_file_path(table)
+
+        if overwrite:
+            if output_file.exists():
+                logger.info("Removing existing export file: %s", str(output_file))
+                output_file.unlink()
+
+            if meta_file.exists():
+                logger.info("Removing existing metadata file: %s", str(meta_file))
+                meta_file.unlink()
+
+        query = f"SELECT * FROM {qualified_table}"
+        if where_sql:
+            query += f" WHERE {where_sql}"
+
+        logger.info(
+            "Exporting ClickHouse table '%s' to file '%s'",
+            qualified_table,
+            str(output_file),
+        )
+
+        columns_query = f"""
+        SELECT name, type
+        FROM system.columns
+        WHERE database = '{db}' AND table = '{table}'
+        ORDER BY position
+        """
+        columns_meta = self.query_rows(columns_query)
+
+        row_count_query = f"SELECT count() AS cnt FROM {qualified_table}"
+        if where_sql:
+            row_count_query += f" WHERE {where_sql}"
+        row_count = self.query_rows(row_count_query)[0]["cnt"]
+
+        raw_bytes_written = 0
+
+        try:
+            with self.client.raw_stream(query=query, fmt="Native") as source, open(output_file, "wb") as fh:
+                compressor = zstd.ZstdCompressor(level=9)
+                with compressor.stream_writer(fh) as writer:
+                    while True:
+                        chunk = source.read(chunk_size)
+                        if not chunk:
+                            break
+                        writer.write(chunk)
+                        raw_bytes_written += len(chunk)
+
+            meta = {
+                "database": db,
+                "table": table,
+                "format": "Native",
+                "compression": "zstd",
+                "row_count": row_count,
+                "columns": columns_meta,
+            }
+
+            meta_file.write_text(
+                json.dumps(meta, ensure_ascii=False, indent=4),
+                encoding="utf-8",
+            )
+
+            logger.info(
+                "Exported table '%s' successfully row_count=%s raw_bytes=%s output_file='%s' meta_file='%s'",
+                qualified_table,
+                row_count,
+                raw_bytes_written,
+                str(output_file),
+                str(meta_file),
+            )
+
+            return str(output_file)
+
+        except Exception as e:
+            logger.error(
+                "Failed to export ClickHouse table '%s' to '%s': %s",
+                qualified_table,
+                str(output_file),
+                str(e),
+            )
+            raise
+
+    def import_table_data(
+        self,
+        table: str,
+        database: str | None = None,
+    ) -> None:
+        """
+        Import business_data/{table}.native.zst back into ClickHouse.
+
+        Args:
+            table: Target table name.
+            database: Optional database name. Defaults to client database.
+        """
+        if zstd is None:
+            raise ImportError(
+                "zstandard is required for import_table_data. "
+                "Install it with: pip install zstandard"
+            )
+
+        db = database or CLICKHOUSE_DATABASE
+        qualified_table = f"{db}.{table}"
+        input_file = self._get_business_data_file_path(table)
+
+        if not input_file.exists():
+            raise FileNotFoundError(f"Input file does not exist: {input_file}")
+
+        logger.info(
+            "Importing ClickHouse data file '%s' into table '%s'",
+            str(input_file),
+            qualified_table,
+        )
+
+        try:
+            with open(input_file, "rb") as fh:
+                dctx = zstd.ZstdDecompressor()
+                with dctx.stream_reader(fh) as reader:
+                    self.client.raw_insert(
+                        table=qualified_table,
+                        insert_block=reader,
+                        fmt="Native",
+                    )
+
+            logger.info(
+                "Imported ClickHouse data file '%s' into table '%s' successfully",
+                str(input_file),
+                qualified_table,
+            )
+
+        except Exception as e:
+            logger.error(
+                "Failed to import ClickHouse data file '%s' into table '%s': %s",
+                str(input_file),
+                qualified_table,
+                str(e),
+            )
             raise

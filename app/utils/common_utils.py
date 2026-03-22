@@ -107,12 +107,16 @@ def update_task_config(task_name: str, config: dict) -> None:
     logger.info("Updated config for task: %s", task_name)
 
 
-def get_target_market_ids() -> list[str]:
+def get_target_outcome_ids(minutes: int = 200) -> list[str]:
+    query = f"""
+    SELECT DISTINCT outcome_id
+    FROM polymarket_target_market
+    WHERE ck_insert_time >= now() - INTERVAL {minutes} MINUTE
     """
-    Get target market IDs from MySQL.
 
-    Returns:
-        list of market IDs
-    """
+    from app.clients.clickhouse_client import ClickHouseClient
 
-    return ['56914066788195652124819518509742797268065105214859208750975274268335607133892']
+    clickhouse_client = ClickHouseClient()
+    result = clickhouse_client.query_rows(query)
+
+    return [row["outcome_id"] for row in result]

@@ -326,6 +326,89 @@ ORDER BY (cluster_name, topic_name, collected_at)
 TTL collected_at + INTERVAL 30 DAY DELETE
 """
 
+POLYMARKET_TARGET_MARKET_TABLE_COLS = [
+    "market_id",
+    "outcome_id",
+    "volume",
+    "ck_insert_time",
+]
+POLYMARKET_TARGET_MARKET_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_target_market
+(
+    market_id String,
+    outcome_id String,
+    volume Float64,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+ORDER BY (market_id, outcome_id);
+"""
+
+BACKFILL_PRICE_CHANGE_TABLE_COLS = [
+    "update_type",
+    "market_id",
+    "token_id",
+    "side",
+    "best_bid",
+    "best_ask",
+    "event_timestamp",
+    "change_price",
+    "change_size",
+    "change_side",
+    "ck_insert_time",
+]
+BACKFILL_PRICE_CHANGE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_backfill_price_change
+(
+    update_type String,
+    market_id String,
+    token_id String,
+    side String,
+    best_bid Float64,
+    best_ask Float64,
+    event_timestamp Float64,
+    change_price Float64,
+    change_size Float64,
+    change_side String,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toDate(ck_insert_time)
+ORDER BY (market_id, token_id, event_timestamp, side)
+TTL ck_insert_time + INTERVAL 1 DAY;
+"""
+
+BACKFILL_BOOK_SNAPSHOT_TABLE_COLS = [
+    "update_type",
+    "market_id",
+    "token_id",
+    "side",
+    "best_bid",
+    "best_ask",
+    "event_timestamp",
+    "bids",
+    "asks",
+    "ck_insert_time",
+]
+BACKFILL_BOOK_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS polymarket_backfill_book_snapshot
+(
+    update_type String,
+    market_id String,
+    token_id String,
+    side String,
+    best_bid Float64,
+    best_ask Float64,
+    event_timestamp Float64,
+    bids String,
+    asks String,
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toDate(ck_insert_time)
+ORDER BY (market_id, token_id, event_timestamp, side)
+TTL ck_insert_time + INTERVAL 1 DAY;
+"""
 
 CLICKHOUSE_TABLE_QUERIES = [
     TEST_RAW_TABLE_SQL,
@@ -337,6 +420,9 @@ CLICKHOUSE_TABLE_QUERIES = [
     TASK_RUN_LOG_TABLE_SQL,
     KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_SQL,
     KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_SQL,
+    POLYMARKET_TARGET_MARKET_TABLE_SQL,
+    BACKFILL_PRICE_CHANGE_TABLE_SQL,
+    BACKFILL_BOOK_SNAPSHOT_TABLE_SQL,
 ]
 
 
@@ -348,6 +434,12 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
     POLYMARKET_MARKET_SNAPSHOT = POLYMARKET_MARKET_SNAPSHOT_TABLE_COLS
     POLYMARKET_OUTCOME_SNAPSHOT = POLYMARKET_OUTCOME_SNAPSHOT_TABLE_COLS
     TASK_RUN_LOG = TASK_RUN_LOG_TABLE_COLS
+    POLYMARKET_TARGET_MARKET = POLYMARKET_TARGET_MARKET_TABLE_COLS
+    KAFKA_CLUSTER_METRIC_SNAPSHOT = KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_COLS
+    KAFKA_TOPIC_METRIC_SNAPSHOT = KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_COLS
+    POLYMARKET_BACKFILL_PRICE_CHANGE = BACKFILL_PRICE_CHANGE_TABLE_COLS
+    POLYMARKET_BACKFILL_BOOK_SNAPSHOT = BACKFILL_BOOK_SNAPSHOT_TABLE_COLS
+
 
 # ─────────────────────────────────────────
 # IMPORT AND REGISTER STAR SCHEMA TABLES
@@ -355,6 +447,4 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
 from app.schemas.star_schema import STAR_SCHEMA_TABLES
 
 # Combined list of ALL tables to create on init
-ALL_TABLE_QUERIES = CLICKHOUSE_TABLE_QUERIES + STAR_SCHEMA_TABLES
-KAFKA_CLUSTER_METRIC_SNAPSHOT = KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_COLS
-KAFKA_TOPIC_METRIC_SNAPSHOT = KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_COLS
+CLICKHOUSE_TABLE_QUERIES = CLICKHOUSE_TABLE_QUERIES + STAR_SCHEMA_TABLES

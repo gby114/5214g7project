@@ -1,0 +1,33 @@
+{
+    "database": "default",
+    "table": "test_raw",
+    "format": "Native",
+    "compression": "zstd",
+    "row_count": 1398,
+    "columns": [
+        {
+            "name": "source",
+            "type": "String"
+        },
+        {
+            "name": "exchange",
+            "type": "String"
+        },
+        {
+            "name": "entity_id",
+            "type": "String"
+        },
+        {
+            "name": "metric_value",
+            "type": "Float64"
+        },
+        {
+            "name": "metric_count",
+            "type": "UInt64"
+        },
+        {
+            "name": "ck_insert_time",
+            "type": "DateTime"
+        }
+    ]
+}

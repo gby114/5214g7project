@@ -1,0 +1,49 @@
+{
+    "database": "default",
+    "table": "polymarket_backfill_book_snapshot",
+    "format": "Native",
+    "compression": "zstd",
+    "row_count": 20139,
+    "columns": [
+        {
+            "name": "update_type",
+            "type": "String"
+        },
+        {
+            "name": "market_id",
+            "type": "String"
+        },
+        {
+            "name": "token_id",
+            "type": "String"
+        },
+        {
+            "name": "side",
+            "type": "String"
+        },
+        {
+            "name": "best_bid",
+            "type": "Float64"
+        },
+        {
+            "name": "best_ask",
+            "type": "Float64"
+        },
+        {
+            "name": "event_timestamp",
+            "type": "Float64"
+        },
+        {
+            "name": "bids",
+            "type": "String"
+        },
+        {
+            "name": "asks",
+            "type": "String"
+        },
+        {
+            "name": "ck_insert_time",
+            "type": "DateTime"
+        }
+    ]
+}
