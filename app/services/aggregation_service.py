@@ -98,7 +98,10 @@ class AggregationService:
         """
         logger.info("Populating dim_market starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT
                 market_id,
                 event_id,
@@ -107,6 +110,8 @@ class AggregationService:
                 tags_json,
                 updated_at
             FROM polymarket_market_dim
+            WHERE updated_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND updated_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
@@ -144,12 +149,17 @@ class AggregationService:
         """
         logger.info("Populating dim_outcome starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT DISTINCT
                 outcome_id,
                 market_id,
                 label
             FROM polymarket_outcome_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
@@ -184,12 +194,17 @@ class AggregationService:
         """
         logger.info("Populating dim_source starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT DISTINCT
                 concat(source, '_', exchange) AS source_id,
                 source,
                 exchange
             FROM polymarket_market_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
