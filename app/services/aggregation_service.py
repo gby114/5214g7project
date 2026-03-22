@@ -199,7 +199,7 @@ class AggregationService:
             logger.info("No source dim data found")
             return
 
-        now = get_utc_now()
+        now = round_datetime(get_utc_now(), "day")
         for row in rows:
             row["ck_insert_time"] = now
 
@@ -228,7 +228,7 @@ class AggregationService:
         """
         logger.info("Aggregating placeholder1 data starting")
 
-        end_time   = get_utc_now()
+        end_time = round_datetime(get_utc_now(), "hour")
         start_time = end_time - timedelta(hours=1)
 
         query = f"""
@@ -259,7 +259,7 @@ class AggregationService:
             logger.info("No market hourly data to aggregate")
             return
 
-        now = get_utc_now()
+        now = end_time
         for row in rows:
             row["ck_insert_time"] = now
 
@@ -298,7 +298,7 @@ class AggregationService:
         """
         logger.info("Aggregating placeholder2 data starting")
 
-        end_time   = get_utc_now()
+        end_time = round_datetime(get_utc_now(), "hour")
         start_time = end_time - timedelta(hours=1)
 
         query = f"""
@@ -332,7 +332,7 @@ class AggregationService:
             logger.info("No outcome hourly data to aggregate")
             return
 
-        now = get_utc_now()
+        now = end_time
         for row in rows:
             row["ck_insert_time"] = now
 
@@ -373,9 +373,10 @@ class AggregationService:
         """
         logger.info("Aggregating placeholder3 data starting")
 
-        now    = get_utc_now()
+        now = round_datetime(get_utc_now(), "day")
         target = (now - timedelta(days=1)).replace(
-                    hour=0, minute=0, second=0, microsecond=0)
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         query = f"""
             SELECT
@@ -404,7 +405,6 @@ class AggregationService:
             logger.info("No market daily data to aggregate")
             return
 
-        now = get_utc_now()
         for row in rows:
             row["ck_insert_time"] = now
 
@@ -444,9 +444,10 @@ class AggregationService:
         """
         logger.info("Aggregating placeholder4 data starting")
 
-        now    = get_utc_now()
+        now = round_datetime(get_utc_now(), "day")
         target = (now - timedelta(days=1)).replace(
-                    hour=0, minute=0, second=0, microsecond=0)
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         query = f"""
             SELECT
@@ -476,7 +477,6 @@ class AggregationService:
             logger.info("No outcome daily data to aggregate")
             return
 
-        now = get_utc_now()
         for row in rows:
             row["ck_insert_time"] = now
 
@@ -511,7 +511,7 @@ aggregation_service = AggregationService()
 # TEST — run this file directly to test
 # ─────────────────────────────────────────
 if __name__ == "__main__":
-    
+
     print("=" * 40)
     print("Test 1 — Creating star schema tables...")
     from app.schemas.star_schema import STAR_SCHEMA_TABLES
