@@ -410,6 +410,113 @@ ORDER BY (market_id, token_id, event_timestamp, side)
 TTL ck_insert_time + INTERVAL 1 DAY;
 """
 
+# 1. Price Hourly Fact - Captures OHLCV and Market Sentiment
+FACT_BACKFILL_PRICE_HOURLY_TABLE_COLS = [
+    "market_id", "token_id", "hour_bucket", "open_price", "close_price",
+    "high_price", "low_price", "total_volume", "trade_count", 
+    "buy_volume", "sell_volume", "ck_insert_time",
+]
+
+
+FACT_BACKFILL_PRICE_HOURLY_SQL = """
+CREATE TABLE IF NOT EXISTS fact_backfill_price_hourly
+(
+    market_id       String,
+    token_id        String,
+    hour_bucket     DateTime,
+    open_price      Float64,
+    close_price     Float64,
+    high_price      Float64,
+    low_price       Float64,
+    total_volume    Float64,
+    trade_count     UInt64,
+    buy_volume      Float64,
+    sell_volume     Float64,
+    ck_insert_time  DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toDate(hour_bucket)
+ORDER BY (market_id, token_id, hour_bucket)
+"""
+
+# 2. Price Daily Fact - Roll-up for long-term trends
+FACT_BACKFILL_PRICE_DAILY_TABLE_COLS = [
+    "market_id", "token_id", "day_bucket", "open_price", "close_price",
+    "high_price", "low_price", "daily_volume", "daily_trades", "net_flow", "ck_insert_time",
+]
+
+FACT_BACKFILL_PRICE_DAILY_SQL = """
+CREATE TABLE IF NOT EXISTS fact_backfill_price_daily
+(
+    market_id       String,
+    token_id        String,
+    day_bucket      Date,
+    open_price      Float64,
+    close_price     Float64,
+    high_price      Float64,
+    low_price       Float64,
+    daily_volume    Float64,
+    daily_trades    UInt64,
+    net_flow        Float64,
+    ck_insert_time  DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toYYYYMM(day_bucket)
+ORDER BY (market_id, token_id, day_bucket)
+"""
+
+# 3. Book Hourly Fact - Analyzes liquidity and spread health
+FACT_BACKFILL_BOOK_HOURLY_TABLE_COLS = [
+    "market_id", "token_id", "hour_bucket", "avg_spread", 
+    "avg_mid_price", "price_volatility", "snapshot_count", "ck_insert_time",
+]
+
+
+FACT_BACKFILL_BOOK_HOURLY_SQL = """
+CREATE TABLE IF NOT EXISTS fact_backfill_book_hourly
+(
+    market_id       String,
+    token_id        String,
+    hour_bucket     DateTime,
+    avg_spread      Float64,
+    avg_mid_price   Float64,
+    price_volatility Float64,
+    snapshot_count  UInt64,
+    ck_insert_time  DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toDate(hour_bucket)
+ORDER BY (market_id, token_id, hour_bucket)
+"""
+
+# 4. Book Daily Fact - Summarizes market stability
+FACT_BACKFILL_BOOK_DAILY_TABLE_COLS = [
+    "market_id", "token_id", "day_bucket", "avg_daily_spread", 
+    "avg_daily_volatility", "max_daily_spread", "snapshot_count", "ck_insert_time",
+]
+
+
+FACT_BACKFILL_BOOK_DAILY_SQL = """
+CREATE TABLE IF NOT EXISTS fact_backfill_book_daily
+(
+    market_id            String,
+    token_id             String,
+    day_bucket           Date,
+    avg_daily_spread     Float64,
+    avg_daily_volatility Float64,
+    max_daily_spread     Float64,
+    snapshot_count       UInt64,
+    ck_insert_time       DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(ck_insert_time)
+PARTITION BY toYYYYMM(day_bucket)
+ORDER BY (market_id, token_id, day_bucket)
+"""
+
+
+
+
+
 CLICKHOUSE_TABLE_QUERIES = [
     TEST_RAW_TABLE_SQL,
     TEST_RAW_HOUR_TABLE_SQL,
@@ -423,6 +530,10 @@ CLICKHOUSE_TABLE_QUERIES = [
     POLYMARKET_TARGET_MARKET_TABLE_SQL,
     BACKFILL_PRICE_CHANGE_TABLE_SQL,
     BACKFILL_BOOK_SNAPSHOT_TABLE_SQL,
+    FACT_BACKFILL_PRICE_HOURLY_SQL,
+    FACT_BACKFILL_PRICE_DAILY_SQL,
+    FACT_BACKFILL_BOOK_HOURLY_SQL,
+    FACT_BACKFILL_BOOK_DAILY_SQL,
 ]
 
 
@@ -439,6 +550,10 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
     KAFKA_TOPIC_METRIC_SNAPSHOT = KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_COLS
     POLYMARKET_BACKFILL_PRICE_CHANGE = BACKFILL_PRICE_CHANGE_TABLE_COLS
     POLYMARKET_BACKFILL_BOOK_SNAPSHOT = BACKFILL_BOOK_SNAPSHOT_TABLE_COLS
+    FACT_BACKFILL_PRICE_HOURLY = FACT_BACKFILL_PRICE_HOURLY_TABLE_COLS
+    FACT_BACKFILL_PRICE_DAILY = FACT_BACKFILL_PRICE_DAILY_TABLE_COLS
+    FACT_BACKFILL_BOOK_HOURLY = FACT_BACKFILL_BOOK_HOURLY_TABLE_COLS
+    FACT_BACKFILL_BOOK_DAILY = FACT_BACKFILL_BOOK_DAILY_TABLE_COLS
 
 
 # ─────────────────────────────────────────
