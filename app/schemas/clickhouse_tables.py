@@ -227,6 +227,106 @@ ORDER BY (task_name, start_time)
 TTL ck_insert_time + INTERVAL 30 DAY DELETE
 """
 
+
+KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_COLS = [
+    "collected_at",
+    "collected_date",
+    "collected_hour",
+    "cluster_name",
+    "bootstrap_servers",
+    "broker_count",
+    "topic_count",
+    "internal_topic_count",
+    "partition_count",
+    "under_replicated_partition_count",
+    "offline_partition_count",
+    "estimated_message_count",
+    "ck_insert_time",
+]
+
+
+KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS kafka_cluster_metric_snapshot
+(
+    collected_at DateTime,
+    collected_date Date,
+    collected_hour DateTime,
+
+    cluster_name String,
+    bootstrap_servers String,
+
+    broker_count UInt16,
+    topic_count UInt32,
+    internal_topic_count UInt32,
+    partition_count UInt32,
+
+    under_replicated_partition_count UInt32,
+    offline_partition_count UInt32,
+
+    estimated_message_count Int64,
+
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(collected_date)
+ORDER BY (cluster_name, collected_at)
+TTL collected_at + INTERVAL 30 DAY DELETE
+"""
+
+
+KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_COLS = [
+    "collected_at",
+    "collected_date",
+    "collected_hour",
+    "cluster_name",
+    "topic_name",
+    "is_internal",
+    "partition_count",
+    "replication_factor",
+    "min_isr_count",
+    "avg_isr_count",
+    "under_replicated_partition_count",
+    "offline_partition_count",
+    "log_start_offset_sum",
+    "log_end_offset_sum",
+    "estimated_message_count",
+    "ck_insert_time",
+]
+
+
+KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS kafka_topic_metric_snapshot
+(
+    collected_at DateTime,
+    collected_date Date,
+    collected_hour DateTime,
+
+    cluster_name String,
+    topic_name String,
+    is_internal UInt8,
+
+    partition_count UInt16,
+    replication_factor UInt16,
+
+    min_isr_count UInt16,
+    avg_isr_count Float64,
+
+    under_replicated_partition_count UInt16,
+    offline_partition_count UInt16,
+
+    log_start_offset_sum Int64,
+    log_end_offset_sum Int64,
+    estimated_message_count Int64,
+
+    ck_insert_time DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(collected_date)
+ORDER BY (cluster_name, topic_name, collected_at)
+TTL collected_at + INTERVAL 30 DAY DELETE
+"""
+
+
 CLICKHOUSE_TABLE_QUERIES = [
     TEST_RAW_TABLE_SQL,
     TEST_RAW_HOUR_TABLE_SQL,
@@ -235,6 +335,8 @@ CLICKHOUSE_TABLE_QUERIES = [
     POLYMARKET_MARKET_SNAPSHOT_TABLE_SQL,
     POLYMARKET_OUTCOME_SNAPSHOT_TABLE_SQL,
     TASK_RUN_LOG_TABLE_SQL,
+    KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_SQL,
+    KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_SQL,
 ]
 
 
@@ -246,6 +348,7 @@ class CLICKHOUSE_TABLE_COLS_ENUM(Enum):
     POLYMARKET_MARKET_SNAPSHOT = POLYMARKET_MARKET_SNAPSHOT_TABLE_COLS
     POLYMARKET_OUTCOME_SNAPSHOT = POLYMARKET_OUTCOME_SNAPSHOT_TABLE_COLS
     TASK_RUN_LOG = TASK_RUN_LOG_TABLE_COLS
+<<<<<<< HEAD
 
 # ─────────────────────────────────────────
 # IMPORT AND REGISTER STAR SCHEMA TABLES
@@ -254,3 +357,7 @@ from app.schemas.star_schema import STAR_SCHEMA_TABLES
 
 # Combined list of ALL tables to create on init
 ALL_TABLE_QUERIES = CLICKHOUSE_TABLE_QUERIES + STAR_SCHEMA_TABLES
+=======
+    KAFKA_CLUSTER_METRIC_SNAPSHOT = KAFKA_CLUSTER_METRIC_SNAPSHOT_TABLE_COLS
+    KAFKA_TOPIC_METRIC_SNAPSHOT = KAFKA_TOPIC_METRIC_SNAPSHOT_TABLE_COLS
+>>>>>>> upstream/main

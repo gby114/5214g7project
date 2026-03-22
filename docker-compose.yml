@@ -202,13 +202,16 @@ services:
     image: metabase/metabase:latest
     container_name: polymarket_metabase
     depends_on:
-      - clickhouse
       - mysql
-      - mongodb
     ports:
       - "3000:3000"
-    volumes:
-      - metabase_data:/metabase-data
+    environment:
+      MB_DB_TYPE: mysql
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 3306
+      MB_DB_USER: polymarket_user
+      MB_DB_PASS: polymarket_password
+      MB_DB_HOST: mysql
 
 volumes:
   redis_data:

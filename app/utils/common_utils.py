@@ -105,3 +105,14 @@ def update_task_config(task_name: str, config: dict) -> None:
     )
 
     logger.info("Updated config for task: %s", task_name)
+
+
+def get_target_market_ids() -> list[str]:
+    """
+    Get target market IDs from MySQL.
+
+    Returns:
+        list of market IDs
+    """
+
+    return ['56914066788195652124819518509742797268065105214859208750975274268335607133892']

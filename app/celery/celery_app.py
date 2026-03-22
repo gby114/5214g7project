@@ -27,6 +27,7 @@ celery_app = Celery(
         "app.tasks.ingestion_tasks",
         "app.tasks.consume_tasks",
         "app.tasks.aggregation_tasks",
+        "app.tasks.common_task",
     ],
 )
 
@@ -42,6 +43,10 @@ beat_schedule = {
     "ingest-test-raw-data-every-minute": {
         "task": "app.tasks.ingestion_tasks.ingest_test_raw_data",
         "schedule": crontab(minute="*"),
+    },
+    "collect-kafka-metrics-every-5-minutes": {
+        "task": "app.tasks.common_task.collect_kafka_metrics",
+        "schedule": crontab(minute="*/5"),
     },
     # "aggregate-hour-data-01-every-hour": {
     #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
