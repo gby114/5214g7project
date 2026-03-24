@@ -1,6 +1,7 @@
 """
 Project: QF5214 Polymarket Data Pipeline
 File: aggregation_service.py
+Created: 2026-03-21
 Description: Aggregation service for processing and transforming
              Polymarket raw data into star schema fact/dim tables.
 """
@@ -26,9 +27,7 @@ class AggregationService:
     Implements star schema with fact and dimension tables.
     """
 
-    # ─────────────────────────────────────────
-    # EXISTING TEST METHOD (keep as is)
-    # ─────────────────────────────────────────
+   
 
     @classmethod
     def aggregate_test_raw_data(cls):
@@ -99,7 +98,10 @@ class AggregationService:
         """
         logger.info("Populating dim_market starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT
                 market_id,
                 event_id,
@@ -108,6 +110,8 @@ class AggregationService:
                 tags_json,
                 updated_at
             FROM polymarket_market_dim
+            WHERE updated_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND updated_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
@@ -145,12 +149,17 @@ class AggregationService:
         """
         logger.info("Populating dim_outcome starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT DISTINCT
                 outcome_id,
                 market_id,
                 label
             FROM polymarket_outcome_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
@@ -185,12 +194,17 @@ class AggregationService:
         """
         logger.info("Populating dim_source starting")
 
-        query = """
+        end_time   = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=6)
+
+        query = f"""
             SELECT DISTINCT
                 concat(source, '_', exchange) AS source_id,
                 source,
                 exchange
             FROM polymarket_market_snapshot
+            WHERE captured_at >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND captured_at <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
         """
 
         rows = ClickHouseClient().query_rows(query)
@@ -374,9 +388,7 @@ class AggregationService:
         logger.info("Aggregating placeholder3 data starting")
 
         now = round_datetime(get_utc_now(), "day")
-        target = (now - timedelta(days=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        target = round_datetime(now - timedelta(days=1), "day")
 
         query = f"""
             SELECT
@@ -445,9 +457,7 @@ class AggregationService:
         logger.info("Aggregating placeholder4 data starting")
 
         now = round_datetime(get_utc_now(), "day")
-        target = (now - timedelta(days=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        target = round_datetime(now - timedelta(days=1), "day")
 
         query = f"""
             SELECT
