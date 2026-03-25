@@ -83,11 +83,9 @@ def aggregate_backfill_hourly_task():
     Scheduled task to run hourly aggregations for Price and Book backfill data.
     This moves data from raw backfill tables to hourly fact tables.
     """
-    from app.services.aggregation_service import AggregationService
-    
-    AggregationService.aggregate_backfill_price_hourly()
+    aggregation_service.aggregate_backfill_price_hourly()
     time.sleep(2)
-    AggregationService.aggregate_backfill_book_hourly()
+    aggregation_service.aggregate_backfill_book_hourly()
     
 
 
@@ -101,8 +99,6 @@ def aggregate_backfill_daily_task():
     Scheduled task to perform daily roll-ups (Hourly -> Daily fact tables).
     Usually runs once a day to generate long-term trend data.
     """
-    from app.services.aggregation_service import AggregationService
-    
-    AggregationService.aggregate_backfill_price_daily()
+    aggregation_service.aggregate_backfill_price_daily()
     time.sleep(2)
-    AggregationService.aggregate_backfill_book_daily()
+    aggregation_service.aggregate_backfill_book_daily()

@@ -515,7 +515,7 @@ class AggregationService:
         """
         logger.info("Starting Price Change Hourly aggregation...")
         end_time = round_datetime(get_utc_now(), "hour")
-        start_time = end_time - timedelta(hours=24) 
+        start_time = end_time - timedelta(hours=1)
 
         query = f"""
             SELECT
@@ -558,8 +558,8 @@ class AggregationService:
     @classmethod
     def aggregate_backfill_price_daily(cls):
         logger.info("Starting Price Change Daily roll-up...")
-        now = get_utc_now() 
-        lookback_date = (now - timedelta(days=3)).strftime("%Y-%m-%d")
+        now = round_datetime(get_utc_now(), "day")
+        target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
         query = f"""
             SELECT
@@ -574,7 +574,7 @@ class AggregationService:
                 sum(trade_count) AS daily_trades,
                 sum(buy_volume) - sum(sell_volume) AS net_flow
             FROM fact_backfill_price_hourly
-            WHERE toDate(hour_bucket) >= '{lookback_date}'  
+            WHERE toDate(hour_bucket) = '{target_date}'
             GROUP BY market_id, token_id, day_bucket
         """
         rows = ClickHouseClient().query_rows(query)
@@ -595,7 +595,7 @@ class AggregationService:
         """
         logger.info("Starting Book Snapshot Hourly aggregation...")
         end_time = round_datetime(get_utc_now(), "hour")
-        start_time = end_time - timedelta(hours=24)
+        start_time = end_time - timedelta(hours=1)
 
         query = f"""
             SELECT
@@ -625,8 +625,8 @@ class AggregationService:
     @classmethod
     def aggregate_backfill_book_daily(cls):
         logger.info("Starting Book Snapshot Daily roll-up...")
-        now = get_utc_now() 
-        lookback_date = (now - timedelta(days=3)).strftime("%Y-%m-%d")
+        now = round_datetime(get_utc_now(), "day")
+        target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
         query = f"""
             SELECT
@@ -638,7 +638,7 @@ class AggregationService:
                 max(avg_spread) AS max_daily_spread,
                 sum(snapshot_count) AS snapshot_count
             FROM fact_backfill_book_hourly
-            WHERE toDate(hour_bucket) >= '{lookback_date}'
+            WHERE toDate(hour_bucket) = '{target_date}'
             GROUP BY market_id, token_id, day_bucket
         """
         rows = ClickHouseClient().query_rows(query)
@@ -714,10 +714,10 @@ if __name__ == "__main__":
     
     # IMPORTANT: Run Hourly first, because Daily depends on it (Roll-up)
     print("-> Aggregating: Price Hourly...")
-    AggregationService.aggregate_backfill_price_hourly()
+    aggregation_service.aggregate_backfill_price_hourly()
     
     print("-> Aggregating: Price Daily...")
-    AggregationService.aggregate_backfill_price_daily()
+    aggregation_service.aggregate_backfill_price_daily()
 
     # ─────────────────────────────────────────
     # STEP 3: Aggregate Book Snapshot Data
@@ -727,10 +727,10 @@ if __name__ == "__main__":
     print("=" * 50)
     
     print("-> Aggregating: Book Hourly...")
-    AggregationService.aggregate_backfill_book_hourly()
+    aggregation_service.aggregate_backfill_book_hourly()
     
     print("-> Aggregating: Book Daily...")
-    AggregationService.aggregate_backfill_book_daily()
+    aggregation_service.aggregate_backfill_book_daily()
 
     print("\n" + "=" * 50)
     print("All backfill aggregation tasks finished!")

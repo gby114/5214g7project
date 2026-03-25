@@ -437,6 +437,7 @@ CREATE TABLE IF NOT EXISTS fact_backfill_price_hourly
 ENGINE = ReplacingMergeTree(ck_insert_time)
 PARTITION BY toDate(hour_bucket)
 ORDER BY (market_id, token_id, hour_bucket)
+TTL hour_bucket + INTERVAL 90 DAY DELETE
 """
 
 # 2. Price Daily Fact - Roll-up for long-term trends
@@ -463,6 +464,7 @@ CREATE TABLE IF NOT EXISTS fact_backfill_price_daily
 ENGINE = ReplacingMergeTree(ck_insert_time)
 PARTITION BY toYYYYMM(day_bucket)
 ORDER BY (market_id, token_id, day_bucket)
+TTL day_bucket + INTERVAL 365 DAY DELETE
 """
 
 # 3. Book Hourly Fact - Analyzes liquidity and spread health
@@ -487,6 +489,7 @@ CREATE TABLE IF NOT EXISTS fact_backfill_book_hourly
 ENGINE = ReplacingMergeTree(ck_insert_time)
 PARTITION BY toDate(hour_bucket)
 ORDER BY (market_id, token_id, hour_bucket)
+TTL hour_bucket + INTERVAL 90 DAY DELETE
 """
 
 # 4. Book Daily Fact - Summarizes market stability
@@ -511,6 +514,7 @@ CREATE TABLE IF NOT EXISTS fact_backfill_book_daily
 ENGINE = ReplacingMergeTree(ck_insert_time)
 PARTITION BY toYYYYMM(day_bucket)
 ORDER BY (market_id, token_id, day_bucket)
+TTL day_bucket + INTERVAL 365 DAY DELETE
 """
 
 
