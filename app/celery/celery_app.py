@@ -107,6 +107,14 @@ beat_schedule = {
     #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_04",
     #     "schedule": crontab(day_of_week="*", hour=0, minute=0),
     # },
+    # "backfill-hourly-aggregation-cron": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_backfill_data_hourly",
+    #     "schedule": crontab(minute=5, hour="*"),
+    # },
+    # "backfill-daily-rollup-cron": {
+    #     "task": "app.tasks.aggregation_tasks.aggregate_backfill_data_daily",
+    #     "schedule": crontab(minute=15, hour=1),
+    # },
 }
 
 # if FETCH_MARKETS_ENABLED:

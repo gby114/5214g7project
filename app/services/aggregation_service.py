@@ -513,6 +513,154 @@ class AggregationService:
 
         logger.info("Aggregating placeholder4 data finished: %s rows", len(rows))
 
+    # ─────────────────────────────────────────
+    # BACKFILL DATA AGGREGATION METHODS
+    # ─────────────────────────────────────────
+
+    @classmethod
+    def aggregate_backfill_price_hourly(cls):
+        """
+        [1/4] Price Change Hourly Aggregation
+        Processes raw trade stream from polymarket_backfill_price_change into OHLCV.
+        """
+        logger.info("Starting Price Change Hourly aggregation...")
+        end_time = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=1)
+
+        query = f"""
+            SELECT
+                market_id,
+                token_id,
+                toStartOfHour(ck_insert_time) AS hour_bucket,
+                argMin(change_price, event_timestamp) AS open_price,
+                argMax(change_price, event_timestamp) AS close_price,
+                max(change_price) AS high_price,
+                min(change_price) AS low_price,
+                sum(change_price * change_size) AS total_volume,
+                count() AS trade_count,
+                -- Breakdown by side to analyze market sentiment
+                sumIf(change_size, change_side = 'BUY') AS buy_volume,
+                sumIf(change_size, change_side = 'SELL') AS sell_volume
+            FROM polymarket_backfill_price_change
+            WHERE ck_insert_time >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND ck_insert_time <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            GROUP BY market_id, token_id, hour_bucket
+        """
+        rows = ClickHouseClient().query_rows(query)
+        if not rows:
+            logger.info("No price change data found for the current window.")
+            return
+
+        now = get_utc_now()
+        for row in rows: row["ck_insert_time"] = now
+
+        ClickHouseClient().insert_rows(
+            table="fact_backfill_price_hourly",
+            rows=rows,
+            column_names=[
+                "market_id", "token_id", "hour_bucket", "open_price", "close_price",
+                "high_price", "low_price", "total_volume", "trade_count", 
+                "buy_volume", "sell_volume", "ck_insert_time"
+            ]
+        )
+        logger.info("Successfully aggregated %s price hourly rows", len(rows))
+
+    @classmethod
+    def aggregate_backfill_price_daily(cls):
+        logger.info("Starting Price Change Daily roll-up...")
+        now = round_datetime(get_utc_now(), "day")
+        target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        query = f"""
+            SELECT
+                market_id,
+                token_id,
+                toDate(hour_bucket) AS day_bucket,
+                argMin(open_price, hour_bucket) AS open_price,
+                argMax(close_price, hour_bucket) AS close_price,
+                max(high_price) AS high_price,
+                min(low_price) AS low_price,
+                sum(total_volume) AS daily_volume,
+                sum(trade_count) AS daily_trades,
+                sum(buy_volume) - sum(sell_volume) AS net_flow
+            FROM fact_backfill_price_hourly
+            WHERE toDate(hour_bucket) = '{target_date}'
+            GROUP BY market_id, token_id, day_bucket
+        """
+        rows = ClickHouseClient().query_rows(query)
+        if rows:
+            for row in rows: row["ck_insert_time"] = now
+            ClickHouseClient().insert_rows(
+                table="fact_backfill_price_daily",
+                rows=rows,
+                column_names=["market_id", "token_id", "day_bucket", "open_price", "close_price", 
+                              "high_price", "low_price", "daily_volume", "daily_trades", "net_flow", "ck_insert_time"]
+            )
+
+    @classmethod
+    def aggregate_backfill_book_hourly(cls):
+        """
+        [3/4] Book Snapshot Hourly Aggregation
+        Analyzes market depth health, average spreads, and price volatility.
+        """
+        logger.info("Starting Book Snapshot Hourly aggregation...")
+        end_time = round_datetime(get_utc_now(), "hour")
+        start_time = end_time - timedelta(hours=1)
+
+        query = f"""
+            SELECT
+                market_id,
+                token_id,
+                toStartOfHour(ck_insert_time) AS hour_bucket,
+                avg(best_ask - best_bid) AS avg_spread,
+                avg((best_bid + best_ask) / 2) AS avg_mid_price,
+                stddevPop((best_bid + best_ask) / 2) AS price_volatility,
+                count() AS snapshot_count
+            FROM polymarket_backfill_book_snapshot
+            WHERE ck_insert_time >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND ck_insert_time <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            GROUP BY market_id, token_id, hour_bucket
+        """
+        rows = ClickHouseClient().query_rows(query)
+        if rows:
+            now = get_utc_now()
+            for row in rows: row["ck_insert_time"] = now
+            ClickHouseClient().insert_rows(
+                table="fact_backfill_book_hourly",
+                rows=rows,
+                column_names=["market_id", "token_id", "hour_bucket", "avg_spread", 
+                              "avg_mid_price", "price_volatility", "snapshot_count", "ck_insert_time"]
+            )
+
+    @classmethod
+    def aggregate_backfill_book_daily(cls):
+        logger.info("Starting Book Snapshot Daily roll-up...")
+        now = round_datetime(get_utc_now(), "day")
+        target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        query = f"""
+            SELECT
+                market_id,
+                token_id,
+                toDate(hour_bucket) AS day_bucket,
+                avg(avg_spread) AS avg_daily_spread,
+                avg(price_volatility) AS avg_daily_volatility,
+                max(avg_spread) AS max_daily_spread,
+                sum(snapshot_count) AS snapshot_count
+            FROM fact_backfill_book_hourly
+            WHERE toDate(hour_bucket) = '{target_date}'
+            GROUP BY market_id, token_id, day_bucket
+        """
+        rows = ClickHouseClient().query_rows(query)
+        if rows:
+            for row in rows: row["ck_insert_time"] = now
+            ClickHouseClient().insert_rows(
+                table="fact_backfill_book_daily",
+                rows=rows,
+                column_names=["market_id", "token_id", "day_bucket", "avg_daily_spread", 
+                              "avg_daily_volatility", "max_daily_spread", "snapshot_count", "ck_insert_time"]
+            )
+
 
 # Single instance to import elsewhere
 aggregation_service = AggregationService()
@@ -549,3 +697,51 @@ if __name__ == "__main__":
 
     print("=" * 40)
     print("All tests done!")
+
+    # ─────────────────────────────────────────
+    # history data
+    # —————————————————————————————————————————
+
+    from app.schemas.clickhouse_tables import CLICKHOUSE_TABLE_QUERIES
+    
+
+    # ─────────────────────────────────────────
+    # STEP 1: Database Initialization
+    # ─────────────────────────────────────────
+    print("=" * 50)
+    print("Initializing ClickHouse Tables...")
+    for sql in CLICKHOUSE_TABLE_QUERIES:
+        # Using command() for DDL statements (CREATE TABLE)
+        client.command(sql)
+    print("Initialization complete. All tables verified.")
+
+    # ─────────────────────────────────────────
+    # STEP 2: Aggregate Price Change Data
+    # ─────────────────────────────────────────
+    print("\n" + "=" * 50)
+    print("Running Price Change Aggregations")
+    print("=" * 50)
+    
+    # IMPORTANT: Run Hourly first, because Daily depends on it (Roll-up)
+    print("-> Aggregating: Price Hourly...")
+    aggregation_service.aggregate_backfill_price_hourly()
+    
+    print("-> Aggregating: Price Daily...")
+    aggregation_service.aggregate_backfill_price_daily()
+
+    # ─────────────────────────────────────────
+    # STEP 3: Aggregate Book Snapshot Data
+    # ─────────────────────────────────────────
+    print("\n" + "=" * 50)
+    print("Running Book Snapshot Aggregations")
+    print("=" * 50)
+    
+    print("-> Aggregating: Book Hourly...")
+    aggregation_service.aggregate_backfill_book_hourly()
+    
+    print("-> Aggregating: Book Daily...")
+    aggregation_service.aggregate_backfill_book_daily()
+
+    print("\n" + "=" * 50)
+    print("All backfill aggregation tasks finished!")
+    print("=" * 50)

@@ -373,6 +373,6 @@ logger.info(f"Starting debug at {datetime.utcnow()}")
 
 # print(df)
 
-# clickhouse_client = ClickHouseClient()
+#clickhouse_client = ClickHouseClient()
 # clickhouse_client.export_table_data("polymarket_backfill_book_snapshot")
-# clickhouse_client.import_table_data("test_raw")
+#clickhouse_client.import_table_data("test_raw")
