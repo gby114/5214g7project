@@ -3,7 +3,7 @@
     "table": "polymarket_backfill_price_change",
     "format": "Native",
     "compression": "zstd",
-    "row_count": 343562,
+    "row_count": 14658828,
     "columns": [
         {
             "name": "update_type",
@@ -31,7 +31,7 @@
         },
         {
             "name": "event_timestamp",
-            "type": "Float64"
+            "type": "DateTime"
         },
         {
             "name": "change_price",

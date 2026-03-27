@@ -172,6 +172,28 @@ logger.info(f"Starting debug at {datetime.utcnow()}")
 # BackfillService().ingest_backfill_book_snapshot_data()
 # BackfillService().consume_backfill_book_snapshot_data()
 
+# start_time = datetime(2026, 3, 23, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 25, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 21, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 23, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 19, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 21, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 17, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 19, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 15, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 17, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 13, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 15, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+
+# start_time = datetime(2026, 3, 11, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# end_time = datetime(2026, 3, 13, 16, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+# BackfillService().ingest_backfill_price_change_data(start_time=start_time, end_time=end_time, max_urls_per_run=100, is_manual=True)
+# BackfillService().ingest_backfill_book_snapshot_data(start_time=start_time, end_time=end_time, max_urls_per_run=100, is_manual=True)
 
 
 
@@ -373,6 +395,11 @@ logger.info(f"Starting debug at {datetime.utcnow()}")
 
 # print(df)
 
-#clickhouse_client = ClickHouseClient()
+clickhouse_client = ClickHouseClient()
 # clickhouse_client.export_table_data("polymarket_backfill_book_snapshot")
-#clickhouse_client.import_table_data("test_raw")
+clickhouse_client.export_table_data("polymarket_backfill_price_change")
+clickhouse_client.export_table_data("polymarket_target_market")
+# clickhouse_client.import_table_data("polymarket_backfill_book_snapshot")
+
+
+

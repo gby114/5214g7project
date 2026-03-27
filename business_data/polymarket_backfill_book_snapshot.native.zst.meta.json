@@ -3,7 +3,7 @@
     "table": "polymarket_backfill_book_snapshot",
     "format": "Native",
     "compression": "zstd",
-    "row_count": 20139,
+    "row_count": 661371,
     "columns": [
         {
             "name": "update_type",
@@ -31,7 +31,7 @@
         },
         {
             "name": "event_timestamp",
-            "type": "Float64"
+            "type": "DateTime"
         },
         {
             "name": "bids",

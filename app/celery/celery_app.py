@@ -45,26 +45,26 @@ beat_schedule = {
     #     "task": "app.tasks.ingestion_tasks.ingest_test_raw_data",
     #     "schedule": crontab(minute="*"),
     # },
-    # "collect-kafka-metrics-every-5-minutes": {
-    #     "task": "app.tasks.common_task.collect_kafka_metrics",
-    #     "schedule": crontab(minute="*/5"),
-    # },
+    "collect-kafka-metrics-every-5-minutes": {
+        "task": "app.tasks.common_task.collect_kafka_metrics",
+        "schedule": crontab(minute="*/5"),
+    },
     # "refresh-target-market-every-10-minutes": {
     #     "task": "app.tasks.common_task.refresh_target_market",
     #     "schedule": crontab(minute="*/10"),
     # },
-    # "aggregate-hour-data-01-every-hour": {
-    #     "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
-    #     "schedule": crontab(minute=0, hour="*"),
-    # },
-    # "aggregate-day-data-01-every-day": {
-    #     "task": "app.tasks.aggregation_tasks.aggregate_day_data_01",
-    #     "schedule": crontab(day_of_week="*", hour=0, minute=0),
-    # },
-    # "refresh-dimensions-every-ten-minutes": {
-    #     "task": "app.tasks.aggregation_tasks.refresh_dimensions",
-    #     "schedule": crontab(minute=0, hour="*/6"),
-    # },
+    "aggregate-hour-data-01-every-hour": {
+        "task": "app.tasks.aggregation_tasks.aggregate_hour_data_01",
+        "schedule": crontab(minute=0, hour="*"),
+    },
+    "aggregate-day-data-01-every-day": {
+        "task": "app.tasks.aggregation_tasks.aggregate_day_data_01",
+        "schedule": crontab(day_of_week="*", hour=0, minute=0),
+    },
+    "refresh-dimensions-every-ten-minutes": {
+        "task": "app.tasks.aggregation_tasks.refresh_dimensions",
+        "schedule": crontab(minute=0, hour="*/6"),
+    },
     # "consume-backfill-price-change-data-every-minutes": {
     #     "task": "app.tasks.backfill_task.consume_backfill_price_change_data_task",
     #     "schedule": crontab(minute="*"),
@@ -117,14 +117,14 @@ beat_schedule = {
     # },
 }
 
-# if FETCH_MARKETS_ENABLED:
-#     beat_schedule["ingest-polymarket-markets-to-kafka"] = {
-#         "task": "app.tasks.ingestion_tasks.ingest_polymarket_markets",
-#         "schedule": crontab(minute="*/1"),
-#     }
-#     beat_schedule["consume-polymarket-markets-raw-to-clickhouse"] = {
-#         "task": "app.tasks.consume_tasks.consume_polymarket_markets_raw_to_clickhouse",
-#         "schedule": crontab(minute="1-59/1"),
-#     }
+if FETCH_MARKETS_ENABLED:
+    beat_schedule["ingest-polymarket-markets-to-kafka"] = {
+        "task": "app.tasks.ingestion_tasks.ingest_polymarket_markets",
+        "schedule": crontab(minute="*/1"),
+    }
+    beat_schedule["consume-polymarket-markets-raw-to-clickhouse"] = {
+        "task": "app.tasks.consume_tasks.consume_polymarket_markets_raw_to_clickhouse",
+        "schedule": crontab(minute="1-59/1"),
+    }
 
 celery_app.conf.beat_schedule = beat_schedule

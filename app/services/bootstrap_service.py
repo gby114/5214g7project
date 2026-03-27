@@ -53,6 +53,7 @@ class BootstrapService:
         self._bootstrap_kafka()
         self._bootstrap_clickhouse()
         self._bootstrap_mysql()
+        self._bootstrap_clickhouse_import()
 
         logger.info("Infrastructure bootstrap completed successfully")
 
@@ -108,3 +109,35 @@ class BootstrapService:
         client.execute(create_table_sql)
 
         logger.info("MySQL tables bootstrap completed")
+
+    # ===============================
+    # ClickHouse Import
+    # ===============================
+    def _bootstrap_clickhouse_import(self) -> None:
+        """
+        Import ClickHouse business data from local files.
+        """
+        logger.info("Bootstrapping ClickHouse data import")
+
+        client = ClickHouseClient()
+
+        tables_to_import = [
+            "polymarket_backfill_book_snapshot",
+            "polymarket_backfill_price_change",
+            "polymarket_target_market",
+        ]
+
+        for table in tables_to_import:
+            try:
+                logger.info("Importing table data table=%s", table)
+                client.import_table_data(table)
+                logger.info("Imported table data successfully table=%s", table)
+
+            except Exception as e:
+                logger.error(
+                    "Failed to import table data table=%s error=%s",
+                    table,
+                    str(e),
+                )
+
+        logger.info("ClickHouse data import bootstrap completed")

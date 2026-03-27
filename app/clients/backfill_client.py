@@ -293,7 +293,20 @@ class BackfillClient:
                 )
                 logger.info("DuckDB chunk query sql=%s", query.strip())
 
-                df = con.execute(query).fetch_df()
+                try:
+                    df = con.execute(query).fetch_df()
+                except Exception as e:
+                    logger.error(
+                        "DuckDB chunk query failed "
+                        "url=%s chunk_index=%s chunk_start=%s chunk_end=%s error=%s",
+                        url,
+                        total_chunks,
+                        current_start,
+                        current_end,
+                        str(e),
+                    )
+
+                    df = pd.DataFrame()
 
                 row_count = len(df)
                 total_rows += row_count

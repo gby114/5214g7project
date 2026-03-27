@@ -112,3 +112,21 @@ FLUSH PRIVILEGES;
 docker compose restart metabase
 
 http://localhost:3000
+
+
+##### change sql
+docker exec -it polymarket_clickhouse bash
+
+clickhouse-client
+
+DROP TABLE default.polymarket_backfill_price_change;
+
+DROP TABLE default.polymarket_backfill_book_snapshot;
+
+exit
+
+exit
+
+docker compose run --rm init_infra
+
+docker compose restart celery_worker celery_beat

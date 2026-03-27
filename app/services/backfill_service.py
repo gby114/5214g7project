@@ -216,6 +216,10 @@ class BackfillService:
                         time_column="timestamp_received",
                     )
                 ):
+                    if df.empty:
+                        logger.warning("Backfill chunk empty url=%s chunk_index=%s", url, chunk_index)
+                        continue
+
                     process_started_at = perf_counter()
                     raw_row_count = len(df)
 
@@ -594,7 +598,10 @@ class BackfillService:
                             "side": str(value.get("side", "")),
                             "best_bid": float(value.get("best_bid") or 0),
                             "best_ask": float(value.get("best_ask") or 0),
-                            "event_timestamp": float(value.get("timestamp") or 0),
+                            "event_timestamp": datetime.fromtimestamp(
+                                float(value.get("timestamp") or 0),
+                                tz=timezone.utc,
+                            ),
                             "change_price": float(value.get("change_price") or 0),
                             "change_size": float(value.get("change_size") or 0),
                             "change_side": str(value.get("change_side", "")),
@@ -1058,7 +1065,10 @@ class BackfillService:
                             "side": str(value.get("side", "")),
                             "best_bid": float(value.get("best_bid") or 0),
                             "best_ask": float(value.get("best_ask") or 0),
-                            "event_timestamp": float(value.get("timestamp") or 0),
+                            "event_timestamp": datetime.fromtimestamp(
+                                float(value.get("timestamp") or 0),
+                                tz=timezone.utc,
+                            ),
                             "bids": str(value.get("bids") or "[]"),
                             "asks": str(value.get("asks") or "[]"),
                             "ck_insert_time": get_utc_now(),

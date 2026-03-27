@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS polymarket_backfill_price_change
     side String,
     best_bid Float64,
     best_ask Float64,
-    event_timestamp Float64,
+    event_timestamp DateTime,
     change_price Float64,
     change_size Float64,
     change_side String,
@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS polymarket_backfill_book_snapshot
     side String,
     best_bid Float64,
     best_ask Float64,
-    event_timestamp Float64,
+    event_timestamp DateTime,
     bids String,
     asks String,
     ck_insert_time DateTime DEFAULT now()
@@ -413,7 +413,7 @@ TTL ck_insert_time + INTERVAL 1 DAY;
 # 1. Price Hourly Fact - Captures OHLCV and Market Sentiment
 FACT_BACKFILL_PRICE_HOURLY_TABLE_COLS = [
     "market_id", "token_id", "hour_bucket", "open_price", "close_price",
-    "high_price", "low_price", "total_volume", "trade_count", 
+    "high_price", "low_price", "total_volume", "trade_count",
     "buy_volume", "sell_volume", "ck_insert_time",
 ]
 
@@ -469,7 +469,7 @@ TTL day_bucket + INTERVAL 365 DAY DELETE
 
 # 3. Book Hourly Fact - Analyzes liquidity and spread health
 FACT_BACKFILL_BOOK_HOURLY_TABLE_COLS = [
-    "market_id", "token_id", "hour_bucket", "avg_spread", 
+    "market_id", "token_id", "hour_bucket", "avg_spread",
     "avg_mid_price", "price_volatility", "snapshot_count", "ck_insert_time",
 ]
 
@@ -494,7 +494,7 @@ TTL hour_bucket + INTERVAL 90 DAY DELETE
 
 # 4. Book Daily Fact - Summarizes market stability
 FACT_BACKFILL_BOOK_DAILY_TABLE_COLS = [
-    "market_id", "token_id", "day_bucket", "avg_daily_spread", 
+    "market_id", "token_id", "day_bucket", "avg_daily_spread",
     "avg_daily_volatility", "max_daily_spread", "snapshot_count", "ck_insert_time",
 ]
 

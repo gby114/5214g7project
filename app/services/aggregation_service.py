@@ -27,8 +27,6 @@ class AggregationService:
     Implements star schema with fact and dimension tables.
     """
 
-   
-
     @classmethod
     def aggregate_test_raw_data(cls):
         """
@@ -531,7 +529,7 @@ class AggregationService:
             SELECT
                 market_id,
                 token_id,
-                toStartOfHour(ck_insert_time) AS hour_bucket,
+                toStartOfHour(event_timestamp) AS hour_bucket,
                 argMin(change_price, event_timestamp) AS open_price,
                 argMax(change_price, event_timestamp) AS close_price,
                 max(change_price) AS high_price,
@@ -542,8 +540,8 @@ class AggregationService:
                 sumIf(change_size, change_side = 'BUY') AS buy_volume,
                 sumIf(change_size, change_side = 'SELL') AS sell_volume
             FROM polymarket_backfill_price_change
-            WHERE ck_insert_time >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
-              AND ck_insert_time <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            WHERE event_timestamp >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND event_timestamp < toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
             GROUP BY market_id, token_id, hour_bucket
         """
         rows = ClickHouseClient().query_rows(query)
@@ -559,7 +557,7 @@ class AggregationService:
             rows=rows,
             column_names=[
                 "market_id", "token_id", "hour_bucket", "open_price", "close_price",
-                "high_price", "low_price", "total_volume", "trade_count", 
+                "high_price", "low_price", "total_volume", "trade_count",
                 "buy_volume", "sell_volume", "ck_insert_time"
             ]
         )
@@ -593,7 +591,7 @@ class AggregationService:
             ClickHouseClient().insert_rows(
                 table="fact_backfill_price_daily",
                 rows=rows,
-                column_names=["market_id", "token_id", "day_bucket", "open_price", "close_price", 
+                column_names=["market_id", "token_id", "day_bucket", "open_price", "close_price",
                               "high_price", "low_price", "daily_volume", "daily_trades", "net_flow", "ck_insert_time"]
             )
 
@@ -611,14 +609,14 @@ class AggregationService:
             SELECT
                 market_id,
                 token_id,
-                toStartOfHour(ck_insert_time) AS hour_bucket,
+                toStartOfHour(event_timestamp) AS hour_bucket,
                 avg(best_ask - best_bid) AS avg_spread,
                 avg((best_bid + best_ask) / 2) AS avg_mid_price,
                 stddevPop((best_bid + best_ask) / 2) AS price_volatility,
                 count() AS snapshot_count
             FROM polymarket_backfill_book_snapshot
-            WHERE ck_insert_time >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
-              AND ck_insert_time <  toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+            WHERE event_timestamp >= toDateTime('{start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+              AND event_timestamp < toDateTime('{end_time.strftime("%Y-%m-%d %H:%M:%S")}')
             GROUP BY market_id, token_id, hour_bucket
         """
         rows = ClickHouseClient().query_rows(query)
@@ -628,7 +626,7 @@ class AggregationService:
             ClickHouseClient().insert_rows(
                 table="fact_backfill_book_hourly",
                 rows=rows,
-                column_names=["market_id", "token_id", "hour_bucket", "avg_spread", 
+                column_names=["market_id", "token_id", "hour_bucket", "avg_spread",
                               "avg_mid_price", "price_volatility", "snapshot_count", "ck_insert_time"]
             )
 
@@ -657,7 +655,7 @@ class AggregationService:
             ClickHouseClient().insert_rows(
                 table="fact_backfill_book_daily",
                 rows=rows,
-                column_names=["market_id", "token_id", "day_bucket", "avg_daily_spread", 
+                column_names=["market_id", "token_id", "day_bucket", "avg_daily_spread",
                               "avg_daily_volatility", "max_daily_spread", "snapshot_count", "ck_insert_time"]
             )
 
@@ -703,7 +701,7 @@ if __name__ == "__main__":
     # —————————————————————————————————————————
 
     from app.schemas.clickhouse_tables import CLICKHOUSE_TABLE_QUERIES
-    
+
 
     # ─────────────────────────────────────────
     # STEP 1: Database Initialization
@@ -721,11 +719,11 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("Running Price Change Aggregations")
     print("=" * 50)
-    
+
     # IMPORTANT: Run Hourly first, because Daily depends on it (Roll-up)
     print("-> Aggregating: Price Hourly...")
     aggregation_service.aggregate_backfill_price_hourly()
-    
+
     print("-> Aggregating: Price Daily...")
     aggregation_service.aggregate_backfill_price_daily()
 
@@ -735,10 +733,10 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("Running Book Snapshot Aggregations")
     print("=" * 50)
-    
+
     print("-> Aggregating: Book Hourly...")
     aggregation_service.aggregate_backfill_book_hourly()
-    
+
     print("-> Aggregating: Book Daily...")
     aggregation_service.aggregate_backfill_book_daily()
 

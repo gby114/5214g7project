@@ -1,0 +1,25 @@
+{
+    "database": "default",
+    "table": "polymarket_target_market",
+    "format": "Native",
+    "compression": "zstd",
+    "row_count": 108,
+    "columns": [
+        {
+            "name": "market_id",
+            "type": "String"
+        },
+        {
+            "name": "outcome_id",
+            "type": "String"
+        },
+        {
+            "name": "volume",
+            "type": "Float64"
+        },
+        {
+            "name": "ck_insert_time",
+            "type": "DateTime"
+        }
+    ]
+}
